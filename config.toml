@@ -1,0 +1,19 @@
+[node]
+rpc_url = "http://127.0.0.1:8332"
+rpc_user = "bitcoin"
+rpc_password = "bitcoin"
+max_concurrent_requests = 16
+
+[storage]
+image_dir = "./data/images"
+text_log = "./data/inscriptions.log"
+
+[cache]
+enabled = true
+path = "./data/cache"
+bloom_filter_size = 1000000
+bloom_filter_fp_rate = 0.01
+
+[processing]
+parallel_blocks = 8
+batch_size = 1000
