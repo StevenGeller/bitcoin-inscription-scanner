@@ -24,7 +24,6 @@ pub struct StorageConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct ProcessingConfig {
-    pub parallel_blocks: usize,
     pub batch_size: usize,
 }
 
@@ -42,7 +41,6 @@ impl Default for Config {
                 text_log: PathBuf::from("./data/inscriptions.log"),
             },
             processing: ProcessingConfig {
-                parallel_blocks: 8,
                 batch_size: 1000,
             },
         }

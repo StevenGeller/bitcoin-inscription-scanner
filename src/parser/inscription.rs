@@ -28,7 +28,7 @@ use bitcoin::opcodes::{OP_0, OP_FALSE};
 use serde::{Serialize, Deserialize};
 use std::iter::Peekable;
 use std::str::FromStr;
-use log::{debug, trace};
+use log::debug;
 
 /// Represents different types of inscription content
 /// 
@@ -155,6 +155,34 @@ impl InscriptionParser {
     /// - Option<Inscription>: The first inscription found, if any
     pub fn parse_transaction(&self, tx: &Transaction) -> Option<Inscription> {
         debug!("Parsing transaction: {}", tx.txid());
+        
+        // First check inputs for coinbase inscriptions
+        for (i, input) in tx.input.iter().enumerate() {
+            debug!("Checking input {} of transaction {}", i, tx.txid());
+            
+            // Check if this is a coinbase input
+            if input.previous_output.is_null() {
+                debug!("Found coinbase input in tx: {}", tx.txid());
+                debug!("Coinbase script: {:?}", input.script_sig);
+                
+                // Log raw script bytes for debugging
+                if let Ok(bytes) = String::from_utf8(input.script_sig.as_bytes().to_vec()) {
+                    debug!("Raw script bytes as UTF-8: {}", bytes);
+                }
+                
+                if let Some(text) = self.extract_text_from_script(&input.script_sig) {
+                    debug!("Found text in coinbase: {}", text);
+                    return Some(Inscription {
+                        txid: tx.txid(),
+                        content: InscriptionType::Text(text),
+                    });
+                } else {
+                    debug!("No text found in coinbase script");
+                }
+            }
+        }
+
+        // Then check outputs for ordinal inscriptions
         for (i, output) in tx.output.iter().enumerate() {
             debug!("Checking output {} of transaction {}", i, tx.txid());
             debug!("Script: {:?}", output.script_pubkey);
@@ -167,6 +195,33 @@ impl InscriptionParser {
             }
         }
         None
+    }
+
+    /// Extracts meaningful text from a script
+    fn extract_text_from_script(&self, script: &Script) -> Option<String> {
+        let mut found_text = None;
+        let mut push_count = 0;
+        
+        for instruction in script.instructions() {
+            if let Ok(Instruction::PushBytes(data)) = instruction {
+                push_count += 1;
+                // The text is in the third push operation (OP_PUSHBYTES_69)
+                if push_count == 3 {
+                    debug!("Found third push data: {:?}", data.as_bytes());
+                    // Convert hex to ASCII
+                    let hex_str = hex::encode(data.as_bytes());
+                    debug!("Hex string: {}", hex_str);
+                    if let Ok(decoded) = hex::decode(&hex_str) {
+                        if let Ok(text) = String::from_utf8(decoded) {
+                            debug!("Decoded text: {}", text);
+                            found_text = Some(text);
+                        }
+                    }
+                }
+            }
+        }
+        
+        found_text
     }
 
     /// Parses a Bitcoin script looking for inscription patterns
@@ -193,7 +248,6 @@ impl InscriptionParser {
                 let is_false = match first {
                     Instruction::Op(op1) => op1 == OP_FALSE || op1 == OP_0,
                     Instruction::PushBytes(data) => data.as_bytes().is_empty(),
-                    _ => false,
                 };
 
                 if is_false && op2 == all::OP_IF {
@@ -245,7 +299,6 @@ impl InscriptionParser {
                             let is_zero = match instruction {
                                 Instruction::Op(op) => *op == OP_0 || *op == OP_FALSE,
                                 Instruction::PushBytes(data) => data.as_bytes().is_empty(),
-                                _ => false,
                             };
                             if is_zero {
                                 debug!("Found OP_0/OP_FALSE, switching to content");
@@ -310,6 +363,35 @@ mod tests {
     use serde_json;
 
     #[test]
+    fn test_coinbase_text_extraction() {
+        let parser = InscriptionParser::new();
+
+        // Create a transaction with a coinbase input containing the genesis block text
+        let script = Builder::new()
+            .push_slice(b"The Times 03/Jan/2009 Chancellor on brink of second bailout for banks")
+            .into_script();
+
+        let tx = Transaction {
+            version: 1,
+            lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+            input: vec![bitcoin::TxIn {
+                previous_output: bitcoin::OutPoint::null(),
+                script_sig: script,
+                sequence: bitcoin::Sequence::MAX,
+                witness: bitcoin::Witness::default(),
+            }],
+            output: vec![],
+        };
+
+        let inscription = parser.parse_transaction(&tx).unwrap();
+        if let InscriptionType::Text(text) = inscription.content {
+            assert_eq!(text, "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks");
+        } else {
+            panic!("Expected text inscription from coinbase");
+        }
+    }
+
+    #[test]
     fn test_inscription_parsing() {
         let parser = InscriptionParser::new();
 
@@ -360,20 +442,26 @@ mod tests {
         };
 
         let inscription = parser.parse_transaction(&tx).unwrap();
-        match inscription.content {
-            InscriptionType::Text(text) => assert_eq!(text, "Hello, Bitcoin!"),
-            _ => panic!("Expected text inscription"),
+        
+        // Test content
+        if let InscriptionType::Text(text) = &inscription.content {
+            assert_eq!(text, "Hello, Bitcoin!");
+        } else {
+            panic!("Expected text inscription");
         }
 
         // Test serialization/deserialization
         let json = serde_json::to_string(&inscription).unwrap();
         let deserialized: Inscription = serde_json::from_str(&json).unwrap();
+        
+        // Compare txids
         assert_eq!(deserialized.txid, inscription.txid);
-        match (inscription.content, deserialized.content) {
-            (InscriptionType::Text(original), InscriptionType::Text(deserialized)) => {
-                assert_eq!(original, deserialized);
-            }
-            _ => panic!("Expected text inscriptions"),
+        
+        // Compare contents
+        if let (InscriptionType::Text(original), InscriptionType::Text(deserialized)) = (&inscription.content, &deserialized.content) {
+            assert_eq!(original, deserialized);
+        } else {
+            panic!("Expected text inscriptions");
         }
     }
 }

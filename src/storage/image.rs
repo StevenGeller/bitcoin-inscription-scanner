@@ -1,6 +1,6 @@
 use super::Result;
 use bitcoin::Txid;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs::{self, File};
 use std::io::Write;
 use blake3::Hash;
@@ -57,13 +57,14 @@ impl ImageStorage {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use std::str::FromStr;
 
     #[test]
     fn test_image_storage() {
         let temp_dir = TempDir::new().unwrap();
         let storage = ImageStorage::new(temp_dir.path().to_path_buf()).unwrap();
 
-        let txid = Txid::default();
+        let txid = Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let mime_type = "image/png";
         let data = vec![1, 2, 3, 4];
         

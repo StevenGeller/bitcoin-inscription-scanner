@@ -19,6 +19,9 @@ pub enum StorageError {
     
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
+
+    #[error("Hash error: {0}")]
+    HashError(#[from] bitcoin::hashes::Error),
 }
 
 pub type Result<T> = std::result::Result<T, StorageError>;
@@ -36,15 +39,37 @@ impl Storage {
         })
     }
 
-    pub async fn store_inscription(&self, inscription: &Inscription) -> Result<()> {
-        match &inscription.content {
-            crate::parser::InscriptionType::Image { mime_type, data } => {
-                self.image_storage.store(inscription.txid, mime_type, data)
-            }
-            crate::parser::InscriptionType::Text(text) => {
-                self.text_storage.store(inscription.txid, text)
-            }
-            crate::parser::InscriptionType::Unknown(_) => Ok(()),
+pub async fn store_inscription(&self, inscription: &Inscription) -> Result<()> {
+    match &inscription.content {
+        crate::parser::InscriptionType::Image { mime_type, data } => {
+            self.image_storage.store(inscription.txid, mime_type, data)
         }
+        crate::parser::InscriptionType::Text(text) => {
+            self.text_storage.store(inscription.txid, text)
+        }
+        crate::parser::InscriptionType::Unknown(_) => Ok(()),
     }
+}
+
+pub async fn store_text(&self, text: String) -> Result<()> {
+    // Generate a unique identifier using timestamp and text hash
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use bitcoin::hashes::{sha256, Hash, HashEngine};
+    
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    
+    let mut engine = sha256::Hash::engine();
+    engine.input(text.as_bytes());
+    let hash = sha256::Hash::from_engine(engine);
+    
+    // Create a unique txid-like identifier
+    let hash_bytes = hash.to_byte_array();
+    let pseudo_txid = bitcoin::Txid::from_slice(&hash_bytes)
+        .map_err(|e| StorageError::HashError(e))?;
+    
+    self.text_storage.store(pseudo_txid, &text)
+}
 }

@@ -70,13 +70,14 @@ impl TextStorage {
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
+    use std::str::FromStr;
 
     #[test]
     fn test_text_storage() {
         let temp_file = NamedTempFile::new().unwrap();
         let storage = TextStorage::new(temp_file.path().to_path_buf()).unwrap();
 
-        let txid = Txid::default();
+        let txid = Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let content = "Hello, Bitcoin!";
         
         storage.store(txid, content).unwrap();

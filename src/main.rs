@@ -224,7 +224,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match client.get_block_hash(height).await {
                     Ok(hash) => {
                         match client.get_block(&hash).await {
-                            Ok(block) => blocks.push(block),
+                            Ok(block) => {
+                                // Special handling for genesis block
+                                if height == 0 {
+                                    info!("Genesis block found!");
+                                    if let Some(coinbase) = block.txdata.first() {
+                                        info!("Genesis coinbase tx: {:?}", coinbase);
+                                        for input in &coinbase.input {
+                                            info!("Genesis input script: {:?}", input.script_sig);
+                                            info!("Genesis script bytes: {:?}", input.script_sig.as_bytes());
+                                            if let Ok(text) = String::from_utf8(input.script_sig.as_bytes().to_vec()) {
+                                                info!("Genesis script as text: {}", text);
+                                            }
+                                        }
+                                    }
+                                }
+                                blocks.push(block)
+                            },
                             Err(e) => {
                                 error!("Failed to fetch block {}: {}", height, e);
                                 continue;  // Skip failed blocks but continue processing
@@ -245,15 +261,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect()
         };
 
-        // Process blocks in parallel using rayon
-        let inscriptions = parser.process_blocks(blocks);
-        info!("Found {} inscriptions in blocks {} to {}", 
-            inscriptions.len(), current_block, end_block);
+        // Process blocks in parallel using rayon to find text inscriptions
+        let texts = parser.process_blocks(blocks);
+        info!("Found {} text inscriptions in blocks {} to {}", 
+            texts.len(), current_block, end_block);
 
-        // Store discovered inscriptions
-        for inscription in inscriptions {
-            if let Err(e) = storage.store_inscription(&inscription).await {
-                error!("Failed to store inscription {}: {}", inscription.txid, e);
+        // Store discovered text inscriptions
+        for text in texts {
+            if let Err(e) = storage.store_text(text).await {
+                error!("Failed to store text inscription: {}", e);
             }
         }
 

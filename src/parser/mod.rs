@@ -1,5 +1,5 @@
 mod inscription;
 mod parallel;
 
-pub use inscription::{Inscription, InscriptionType, InscriptionParser};
+pub use inscription::{Inscription, InscriptionType};
 pub use parallel::ParallelParser;

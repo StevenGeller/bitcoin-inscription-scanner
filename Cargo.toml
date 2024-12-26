@@ -11,6 +11,7 @@ bitcoin = { version = "0.30.2", features = ["serde"] }
 bitcoincore-rpc = "0.17"
 tokio = { version = "1.0", features = ["full"] }
 rayon = "1.7"
+num_cpus = "1.15"
 rocksdb = "0.21"
 bloom = "0.3"
 serde = { version = "1.0", features = ["derive"] }
@@ -26,6 +27,7 @@ thiserror = "1.0"
 log = "0.4"
 env_logger = "0.9"
 toml = "0.7"
+hex = "0.4"
 
 [dev-dependencies]
 tokio-test = "0.4"

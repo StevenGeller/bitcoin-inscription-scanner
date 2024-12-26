@@ -35,12 +35,12 @@ impl NodeClient {
         let rpc_hash = bitcoincore_rpc::bitcoin::BlockHash::from_str(&hash.to_string())
             .map_err(|e| NodeError::ConnectionError(format!("Failed to convert hash: {}", e)))?;
 
-        let rpc_block = self.client
-            .get_block(&rpc_hash)
-            .map_err(|e| NodeError::RpcError(e))?;
-
-        // Convert from RPC block to bitcoin block
-        let block_hex = bitcoin::consensus::encode::serialize(&rpc_block);
+        // Get block as hex string
+        let block_hex = hex::decode(
+            self.client
+                .get_block_hex(&rpc_hash)
+                .map_err(|e| NodeError::RpcError(e))?
+        ).map_err(|e| NodeError::ConnectionError(format!("Failed to decode hex: {}", e)))?;
         bitcoin::consensus::encode::deserialize(&block_hex)
             .map_err(|e| NodeError::ConnectionError(format!("Failed to deserialize block: {}", e)))
     }
