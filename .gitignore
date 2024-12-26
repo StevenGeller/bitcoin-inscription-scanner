@@ -1,1 +1,7 @@
-/target
+# Config with credentials
+config.toml
+
+# Generated files
+target/
+data/
+.DS_Store

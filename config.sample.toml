@@ -1,7 +1,7 @@
 [node]
 rpc_url = "http://127.0.0.1:8332"
-rpc_user = "umbrel"
-rpc_password = "GmSdJnhHYlVysJdQkFuge8PDxr5IjG0RP4V2vNaiPrA="
+rpc_user = "your_rpc_username"
+rpc_password = "your_rpc_password"
 max_concurrent_requests = 16
 
 [storage]
