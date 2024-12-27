@@ -60,6 +60,7 @@ impl NodeClient {
             .map_err(|e| NodeError::ConnectionError(format!("Failed to convert hash: {}", e)))
     }
 
+    #[allow(dead_code)]
     pub async fn get_best_block_hash(&self) -> Result<BlockHash> {
         let rpc_hash = self.client
             .get_best_block_hash()

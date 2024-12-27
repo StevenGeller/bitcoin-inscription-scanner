@@ -1,4 +1,4 @@
-use super::inscription::{Inscription, InscriptionParser, InscriptionType};
+use super::inscription::{InscriptionParser, InscriptionType};
 use bitcoin::Block;
 use rayon::prelude::*;
 use std::sync::Arc;

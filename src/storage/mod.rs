@@ -39,6 +39,7 @@ impl Storage {
         })
     }
 
+    #[allow(dead_code)]
 pub async fn store_inscription(&self, inscription: &Inscription) -> Result<()> {
     match &inscription.content {
         crate::parser::InscriptionType::Image { mime_type, data } => {
@@ -56,7 +57,7 @@ pub async fn store_text(&self, text: String) -> Result<()> {
     use std::time::{SystemTime, UNIX_EPOCH};
     use bitcoin::hashes::{sha256, Hash, HashEngine};
     
-    let timestamp = SystemTime::now()
+    let _timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
